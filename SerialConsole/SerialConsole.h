@@ -89,7 +89,8 @@ template <typename Head, typename... Tail> struct Executor<Head, Tail...> {
 
     // Check for missing arg
     if (!token) {
-      s.print(F("Err: Missing argument. Usage: "));
+      s.println(F("Missing argument."));
+      s.print("Usage:");
       s.print(name);
       s.print(" ");
       s.println(usage ? usage : "");
@@ -99,9 +100,10 @@ template <typename Head, typename... Tail> struct Executor<Head, Tail...> {
     // Try to parse
     Head val;
     if (!ArgTraits<Head>::parse(token, val)) {
-      s.print(F("Err: Invalid argument '"));
+      s.print(F("Invalid argument '"));
       s.print(token);
-      s.print(F("'. Usage: "));
+      s.println(F("'."));
+      s.print("Usage: ");
       s.print(name);
       s.print(" ");
       s.println(usage ? usage : "");
