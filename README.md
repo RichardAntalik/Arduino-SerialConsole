@@ -1,5 +1,6 @@
 # Arduino-SerialConsole
 Serial console for arduino
+
 Disclaimer: This library is fully vibe-coded. I am not Cpp proficient enough to even understand this code fully.
 
 ## Installation
