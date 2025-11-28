@@ -13,6 +13,14 @@ auto console = createConsole(
 );
 ```
 
+You can use different stream than serial:
+```
+auto console = createConsoleStream(mySerial, 
+  "cmd", fn, "usage",
+  ...
+);
+```
+
 ## Example
 
 ```
@@ -61,6 +69,6 @@ Invalid argument '0.123'.
 
 Binary details on Leonardo platform:
 ```
-Sketch uses 8314 bytes (28%) of program storage space. Maximum is 28672 bytes.
-Global variables use 289 bytes (11%) of dynamic memory, leaving 2271 bytes for local variables. Maximum is 2560 bytes.
+Sketch uses 8264 bytes (28%) of program storage space. Maximum is 28672 bytes.
+Global variables use 283 bytes (11%) of dynamic memory, leaving 2277 bytes for local variables. Maximum is 2560 bytes.
 ```
