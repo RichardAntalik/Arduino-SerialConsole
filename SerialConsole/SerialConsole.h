@@ -179,7 +179,7 @@ public:
         return;
       }
     }
-    _stream.println(F("Unknown command."));
+    _stream.println(F("Unknown command. Type 'help' for list of commands."));
   }
 
 private:
