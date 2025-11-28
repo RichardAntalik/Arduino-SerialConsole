@@ -7,10 +7,11 @@
 // SECTION 1: CONFIGURATION & TYPES
 // =============================================================
 
+// Max command length (including arguments)
 static const size_t INPUT_BUF_SIZE = 64;
 
 typedef void (*VoidFuncPtr)();
-// Invoker now takes name/usage so it can print errors intelligently
+// Invoker takes name/usage to print specific errors
 typedef void (*InvokerFunc)(VoidFuncPtr f, const char *name, const char *usage,
                             Stream &s);
 
@@ -22,19 +23,17 @@ struct Command {
 };
 
 // =============================================================
-// SECTION 2: TEMPLATE ENGINE (VALIDATION LOGIC)
+// SECTION 2: TEMPLATE ENGINE (PARSING & VALIDATION)
 // =============================================================
 namespace console_detail {
 
-// --- 1. Traits: Parse AND Validate ---
+// --- 1. Traits: Parse String -> Type ---
 template <typename T> struct ArgTraits;
 
 template <> struct ArgTraits<int> {
   static bool parse(const char *str, int &out) {
     char *end;
     out = strtol(str, &end, 0);
-    // Valid if: pointers differ (found digits) AND end is null (consumed whole
-    // string)
     return (str != end && *end == '\0');
   }
 };
@@ -55,7 +54,6 @@ template <> struct ArgTraits<float> {
   }
 };
 
-// Arduino double is float
 template <> struct ArgTraits<double> {
   static bool parse(const char *str, float &out) {
     char *end;
@@ -66,7 +64,7 @@ template <> struct ArgTraits<double> {
 
 template <> struct ArgTraits<char *> {
   static bool parse(char *str, char *&out) {
-    out = str; // Strings are always valid tokens
+    out = str;
     return true;
   }
 };
@@ -79,7 +77,6 @@ template <> struct ArgTraits<const char *> {
 };
 
 // --- 2. Recursive Executor ---
-
 template <typename... Args> struct Executor;
 
 // RECURSIVE STEP: Parse Head, then recurse Tail
@@ -90,30 +87,28 @@ template <typename Head, typename... Tail> struct Executor<Head, Tail...> {
 
     char *token = strtok(NULL, " ");
 
-    // 1. Check if argument exists
+    // Check for missing arg
     if (!token) {
-      s.println(F("Missing argument."));
-      s.println(F("Usage: "));
+      s.print(F("Err: Missing argument. Usage: "));
       s.print(name);
       s.print(" ");
       s.println(usage ? usage : "");
       return;
     }
 
-    // 2. Try to parse and validate
+    // Try to parse
     Head val;
     if (!ArgTraits<Head>::parse(token, val)) {
-      s.print(F("Invalid argument '"));
+      s.print(F("Err: Invalid argument '"));
       s.print(token);
-      s.println(F("'."));
-      s.println("Usage: ");
+      s.print(F("'. Usage: "));
       s.print(name);
       s.print(" ");
       s.println(usage ? usage : "");
       return;
     }
 
-    // 3. Recurse
+    // Recurse
     Executor<Tail...>::run(f, name, usage, s, collected..., val);
   }
 };
@@ -123,6 +118,7 @@ template <> struct Executor<> {
   template <typename... Collected>
   static void run(VoidFuncPtr f, const char *n, const char *u, Stream &s,
                   Collected... collected) {
+    // Cast generic pointer back to specific function type and call it
     auto typedFunc = reinterpret_cast<void (*)(Collected...)>(f);
     typedFunc(collected...);
   }
@@ -137,6 +133,7 @@ template <size_t N_CMDS> class SerialConsole {
 public:
   SerialConsole(Stream &s) : _stream(s) {}
 
+  // --- Initialization ---
   void initArgs(size_t i) {}
 
   template <typename... FuncArgs, typename... Rest>
@@ -149,7 +146,7 @@ public:
     _commands[i].usage = usage;
     _commands[i].func = reinterpret_cast<VoidFuncPtr>(func);
 
-    // Bind the recursive validator/executor
+    // Bind the recursive invoker
     _commands[i].invoker = [](VoidFuncPtr f, const char *n, const char *u,
                               Stream &s) {
       console_detail::Executor<FuncArgs...>::run(f, n, u, s);
@@ -158,10 +155,12 @@ public:
     initArgs(i + 1, rest...);
   }
 
+  // --- Runtime ---
   void handleInput() {
     if (!readInputLine())
       return;
 
+    _stream.print(F("> "));
     _stream.println(_inputBuf);
 
     char *token = strtok(_inputBuf, " ");
@@ -175,14 +174,12 @@ public:
 
     for (size_t i = 0; i < N_CMDS; i++) {
       if (strcmp(token, _commands[i].name) == 0) {
-        // Pass name and usage to the invoker for error printing
         _commands[i].invoker(_commands[i].func, _commands[i].name,
                              _commands[i].usage, _stream);
         return;
       }
     }
-    _stream.println(
-        F("Unknown command. Enter 'help' for list of available commands."));
+    _stream.println(F("Unknown command."));
   }
 
 private:
@@ -202,6 +199,7 @@ private:
 
   void printHelp() {
     for (size_t i = 0; i < N_CMDS; i++) {
+      _stream.print(F("  "));
       _stream.print(_commands[i].name);
       if (_commands[i].usage) {
         _stream.print(F(" "));
@@ -212,9 +210,27 @@ private:
   }
 };
 
+// =============================================================
+// SECTION 4: FACTORY FUNCTIONS
+// =============================================================
+
+// Default factory (Uses 'Serial')
 template <typename... Args>
 SerialConsole<sizeof...(Args) / 3> createConsole(Args... args) {
+  static_assert(sizeof...(Args) % 3 == 0,
+                "Args must be triplets: Name, Func, Usage");
   SerialConsole<sizeof...(Args) / 3> c(Serial);
+  c.initArgs(0, args...);
+  return c;
+}
+
+// Stream factory (Uses custom stream)
+template <typename... Args>
+SerialConsole<sizeof...(Args) / 3> createConsoleStream(Stream &s,
+                                                       Args... args) {
+  static_assert(sizeof...(Args) % 3 == 0,
+                "Args must be triplets: Name, Func, Usage");
+  SerialConsole<sizeof...(Args) / 3> c(s);
   c.initArgs(0, args...);
   return c;
 }
