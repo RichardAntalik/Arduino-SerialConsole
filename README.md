@@ -8,6 +8,7 @@ Copy SerialConsole folder to your arduino libraries folder
 
 ## Usage
 ```
+#include "SerialConsole.h"
 auto console = createConsole(
   "fn_name_in_console", function, "usage string"
   "fn_name_in_console2", function2, "usage string"
