@@ -334,6 +334,28 @@ SerialConsole<(sizeof...(Args) / 3) + 1> createConsole(Args... args) {
   return c;
 }
 
+template <typename... Args>
+SerialConsole<(sizeof...(Args) / 3) + 1> createConsoleStream(Stream &s,
+                                                             Args... args) {
+  static_assert(sizeof...(Args) % 3 == 0,
+                "Args must be triplets: Name, Func, Usage");
+
+  // Allocate space for the user commands + 1 extra for the potential
+  // print_code
+  SerialConsole<(sizeof...(Args) / 3) + 1> c(s);
+  c.initArgs(0, args...);
+
+  // Magic detection: If the macro was used, this pointer evaluates to true
+  if (print_embedded_source_code) {
+    c.addDynamicCommand(sizeof...(Args) / 3, "print_source_code",
+                        print_embedded_source_code, "print source code");
+  } else {
+    c.addDynamicCommand(sizeof...(Args) / 3, nullptr, nullptr, nullptr);
+  }
+
+  return c;
+}
+
 #endif
 
 #define EMBED_SOURCE_CODE()                                                    \
