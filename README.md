@@ -22,6 +22,11 @@ auto console = createConsoleStream(mySerial,
   ...
 );
 ```
+### Source code embedding
+
+You can use macro `EMBED_SOURCE_CODE()` to embed source code into MCU flash memory
+When used, a `print_source_code` command will become available. The command prints source code of file where `EMBED_SOURCE_CODE()` macro was used.
+This burns the raw file into MCU flash, so there are obviously limitations for filesize, but usually arduino projects are small.
 
 ## Example
 
@@ -67,10 +72,4 @@ test 123 4.56 hello
 hello
 test 0.123 4.56 hello
 Invalid argument '0.123'.
-```
-
-Binary details on Leonardo platform:
-```
-Sketch uses 8264 bytes (28%) of program storage space. Maximum is 28672 bytes.
-Global variables use 283 bytes (11%) of dynamic memory, leaving 2277 bytes for local variables. Maximum is 2560 bytes.
 ```
